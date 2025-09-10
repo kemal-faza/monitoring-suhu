@@ -1,0 +1,29 @@
+{
+	"version": 1,
+	"author": "Muhamad Kemal Faza",
+	"editor": "wokwi",
+	"parts": [
+		{
+			"type": "board-esp32-devkit-c-v4",
+			"id": "esp",
+			"top": 0,
+			"left": -4.76,
+			"attrs": {}
+		},
+		{
+			"type": "wokwi-dht22",
+			"id": "dht1",
+			"top": -143.7,
+			"left": 167.4,
+			"attrs": { "temperature": "49.4" }
+		}
+	],
+	"connections": [
+		["esp:TX", "$serialMonitor:RX", "", []],
+		["esp:RX", "$serialMonitor:TX", "", []],
+		["esp:3V3", "dht1:VCC", "green", ["h-23.81", "v-38.4", "h201.6"]],
+		["esp:GND.2", "dht1:GND", "black", ["v0", "h110.44"]],
+		["dht1:SDA", "esp:4", "green", ["v0"]]
+	],
+	"dependencies": {}
+}

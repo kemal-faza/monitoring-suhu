@@ -6,8 +6,6 @@ Proyek ini adalah implementasi sistem _Internet of Things_ (IoT) _end-to-end_ se
 
 Sistem ini terdiri dari beberapa komponen utama yang saling terhubung untuk membentuk alur data dari sensor fisik hingga ke antarmuka pengguna.
 
-!(https.storage.googleapis.com/gemini-prod/images/2024/05/15/image_1_M0xNTEuanBn.jpg)
-
 Arsitekturnya adalah sebagai berikut:
 
 -   **Sensor Node (Publisher)**: Sebuah board ESP32 yang terhubung dengan sensor DHT22. Bertugas membaca data, memformatnya ke dalam JSON, dan mengirimkannya ke Broker MQTT.

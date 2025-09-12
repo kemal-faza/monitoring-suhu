@@ -61,7 +61,8 @@ class MqttThread(threading.Thread):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Real-time Climate Monitor (Optimized)")
+        self.title("Real-time Climate Monitor")
+        # Menambah tinggi jendela untuk mengakomodasi 2 grafik
         self.geometry("800x700") 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -79,49 +80,33 @@ class App(tk.Tk):
 
         self.btn_start = tk.Button(control_frame, text="Start Listening", command=self.start_mqtt)
         self.btn_start.pack(side=tk.LEFT, padx=5)
+
         self.btn_stop = tk.Button(control_frame, text="Stop Listening", command=self.stop_mqtt, state=tk.DISABLED)
         self.btn_stop.pack(side=tk.LEFT, padx=5)
         
         plot_frame = tk.Frame(self)
         plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
+        # --- PERUBAHAN UTAMA 1: SETUP SUBPLOT ---
+        # Membuat Figure yang akan berisi 2 subplot
         fig = Figure(figsize=(5, 6), dpi=100)
+        
+        # Membuat 2 subplot (2 baris, 1 kolom).
+        # ax_temp adalah plot ke-1 (atas)
         self.ax_temp = fig.add_subplot(2, 1, 1)
+        # ax_hum adalah plot ke-2 (bawah)
         self.ax_hum = fig.add_subplot(2, 1, 2)
+
+        # Memberi jarak antar plot agar judul dan label tidak tumpang tindih
         fig.tight_layout(pad=3.0)
-
-        # OPTIMASI 1: Setup elemen statis sekali saja
-        self.ax_temp.set_title("Suhu")
-        self.ax_temp.set_ylabel("Suhu (°C)")
-        self.ax_temp.grid(True)
-        self.ax_hum.set_title("Kelembaban")
-        self.ax_hum.set_ylabel("Kelembaban (%)")
-        self.ax_hum.set_xlabel("Waktu")
-        self.ax_hum.grid(True)
-        self.ax_hum.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
-
-        # OPTIMASI 2: Buat objek garis dengan data kosong, lalu simpan objeknya
-        # Koma setelah self.line_temp adalah untuk unpack list berisi satu elemen
-        self.line_temp, = self.ax_temp.plot([], [], 'r-', marker='o', markersize=3)
-        self.line_hum, = self.ax_hum.plot([], [], 'b-', marker='o', markersize=3)
 
         self.canvas = FigureCanvasTkAgg(fig, master=plot_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
         
-        # OPTIMASI 3: Menggunakan init_func dan blit=True untuk performa tinggi
-        self.ani = animation.FuncAnimation(fig, self.update_plot, init_func=self.init_plot,
-                                           interval=1000, blit=True)
-
-    def init_plot(self):
-        """Fungsi inisialisasi untuk blitting."""
-        self.line_temp.set_data([], [])
-        self.line_hum.set_data([], [])
-        # Harus mengembalikan iterable dari artist yang akan dianimasikan
-        return self.line_temp, self.line_hum
+        self.ani = animation.FuncAnimation(fig, self.update_plot, interval=1000, blit=False)
 
     def setup_database(self):
-        # ... (Tidak ada perubahan di sini)
         self.conn = sqlite3.connect(DB_FILE, check_same_thread=False)
         cursor = self.conn.cursor()
         cursor.execute("""
@@ -135,7 +120,7 @@ class App(tk.Tk):
         print(f"Database '{DB_FILE}' siap.")
 
     def update_plot(self, frame):
-        # ... (Logika pengambilan data dari queue tidak berubah)
+        # Bagian pengambilan data dari queue tidak berubah
         while not data_queue.empty():
             try:
                 data = data_queue.get_nowait()
@@ -149,7 +134,7 @@ class App(tk.Tk):
                     cursor.execute("INSERT INTO climate (timestamp, temperature, humidity) VALUES (?, ?, ?)",
                                    (dt_object.strftime("%Y-%m-%d %H:%M:%S"), temp, hum))
                     self.conn.commit()
-                    # print(f"Data tersimpan: {dt_object} - Temp: {temp}°C, Hum: {hum}%") # Optional: matikan agar tidak spam terminal
+                    print(f"Data tersimpan: {dt_object} - Temp: {temp}°C, Hum: {hum}%")
 
                     self.timestamps.append(dt_object)
                     self.temperatures.append(temp)
@@ -163,27 +148,36 @@ class App(tk.Tk):
                 pass
 
         if not self.timestamps:
-            return self.line_temp, self.line_hum
+            return
 
-        # OPTIMASI 4: Update data garis, jangan clear() dan plot() ulang
-        self.line_temp.set_data(self.timestamps, self.temperatures)
-        self.line_hum.set_data(self.timestamps, self.humidities)
+        # --- PERUBAHAN UTAMA 2: PLOTTING TERPISAH ---
+        # Bersihkan kedua area plot sebelum menggambar ulang
+        self.ax_temp.clear()
+        self.ax_hum.clear()
 
-        # OPTIMASI 5: Hitung ulang batas sumbu secara manual
-        self.ax_temp.relim()
-        self.ax_temp.autoscale_view()
-        self.ax_hum.relim()
-        self.ax_hum.autoscale_view()
+        # --- Plot 1: Grafik Suhu (Atas) ---
+        self.ax_temp.plot(self.timestamps, self.temperatures, 'r-', marker='o', markersize=3)
+        self.ax_temp.set_title("Suhu")
+        self.ax_temp.set_ylabel("Suhu (°C)")
+        self.ax_temp.grid(True)
+        # Sembunyikan label sumbu-x di grafik atas agar tidak redundan
+        self.ax_temp.tick_params(axis='x', labelbottom=False)
+
+        # --- Plot 2: Grafik Kelembaban (Bawah) ---
+        self.ax_hum.plot(self.timestamps, self.humidities, 'b-', marker='o', markersize=3)
+        self.ax_hum.set_title("Kelembaban")
+        self.ax_hum.set_ylabel("Kelembaban (%)")
+        self.ax_hum.set_xlabel("Waktu")
+        self.ax_hum.grid(True)
         
-        # Sinkronkan sumbu x jika perlu
-        self.ax_hum.set_xlim(self.ax_temp.get_xlim())
+        # Atur format waktu di sumbu-x untuk grafik bawah
+        self.ax_hum.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         self.ax_hum.figure.autofmt_xdate()
-        
-        # Kembalikan artist yang telah diupdate agar blitting tahu apa yang harus digambar ulang
-        return self.line_temp, self.line_hum
+
+        # Pastikan layout rapi setelah update
+        self.ax_hum.figure.tight_layout(pad=3.0)
 
     def start_mqtt(self):
-        # ... (Tidak ada perubahan di sini)
         if self.mqtt_thread is None or not self.mqtt_thread.is_alive():
             self.mqtt_thread = MqttThread(data_queue)
             self.mqtt_thread.start()
@@ -192,7 +186,6 @@ class App(tk.Tk):
             print("Listener MQTT dimulai.")
 
     def stop_mqtt(self):
-        # ... (Tidak ada perubahan di sini)
         if self.mqtt_thread and self.mqtt_thread.is_alive():
             self.mqtt_thread.stop()
             self.mqtt_thread.join()
@@ -201,9 +194,6 @@ class App(tk.Tk):
             print("Listener MQTT dihentikan.")
 
     def on_closing(self):
-        # Hentikan animasi sebelum menutup untuk mencegah error
-        if self.ani:
-            self.ani.event_source.stop()
         if messagebox.askokcancel("Keluar", "Apakah Anda yakin ingin keluar?"):
             self.stop_mqtt()
             if self.conn:

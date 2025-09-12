@@ -1,224 +1,141 @@
-# Proyek Monitoring Suhu dan Kelembapan Berbasis IoT
+# Proyek Monitoring Suhu dan Kelembapan Real-time Berbasis IoT
 
-Proyek ini adalah implementasi sistem _Internet of Things_ (IoT) _end-to-end_ sederhana untuk memonitor data suhu dan kelembapan secara _real-time_. Data dari sensor dikirim melalui protokol MQTT, disimpan dalam database lokal, dan dapat divisualisasikan melalui dasbor.
+Selamat datang di proyek monitoring IoT _end-to-end_. Sistem ini dirancang untuk mengambil data suhu dan kelembapan dari sensor, mengirimkannya melalui protokol MQTT, menyimpannya dalam database, dan menampilkannya secara _real-time_ melalui dua opsi visualisasi: **dasbor web interaktif** (Plotly & Dash) atau **aplikasi desktop sederhana** (Matplotlib & Tkinter).
 
-## 1. Topologi / Arsitektur End-to-End
+## Fitur Utama
 
-Sistem ini terdiri dari beberapa komponen utama yang saling terhubung untuk membentuk alur data dari sensor fisik hingga ke antarmuka pengguna.
+- **Monitoring Real-time**: Lihat data suhu dan kelembapan saat itu juga.
+- **Pencatatan Data Historis**: Semua data sensor disimpan dalam database lokal SQLite untuk analisis di kemudian hari.
+- **Dua Opsi Visualisasi**:
+  1.  **Dasbor Web (Direkomendasikan)**: Antarmuka modern, interaktif, dan dapat diakses melalui browser, dibangun dengan Plotly & Dash.
+  2.  **Aplikasi Desktop**: Jendela aplikasi sederhana yang ringan dan berjalan secara native di OS Anda, dibangun dengan Matplotlib & Tkinter.
+- **Arsitektur Berbasis MQTT**: Menggunakan protokol MQTT yang ringan dan efisien, standar industri untuk komunikasi IoT.
+- **Simulasi Hardware**: Proyek ini dapat dijalankan sepenuhnya menggunakan simulator Wokwi, tanpa memerlukan perangkat keras fisik.
 
-Arsitekturnya adalah sebagai berikut:
+## Topologi / Arsitektur Sistem
 
--   **Sensor Node (Publisher)**: Sebuah board ESP32 yang terhubung dengan sensor DHT22. Bertugas membaca data, memformatnya ke dalam JSON, dan mengirimkannya ke Broker MQTT.
--   **Broker MQTT**: Menggunakan layanan cloud publik **HiveMQ** sebagai perantara pesan. Ini adalah pusat komunikasi yang menghubungkan publisher (ESP32) dan subscriber (skrip Python).
--   **Data Logger (Subscriber)**: Sebuah skrip Python yang berjalan di komputer lokal. Bertugas untuk berlangganan (subscribe) ke topic MQTT, menerima data, dan menyimpannya ke dalam database.
--   **Database**: Menggunakan **SQLite**, sebuah database berbasis file yang ringan untuk menyimpan data historis suhu dan kelembapan.
--   **Visualisasi**: Menggunakan **Grafana** untuk membuat dasbor interaktif yang membaca data langsung dari database SQLite.
+Sistem ini terdiri dari beberapa komponen yang saling terhubung untuk membentuk alur data yang mulus dari sensor hingga ke antarmuka pengguna.
 
----
+```mermaid
+graph TD
+    subgraph "Sensor Node"
+        A[ESP32 + DHT22] -->|Membaca Data| B(Format Data ke JSON);
+    end
 
-## 2. Platform IoT yang Digunakan
+    subgraph "Komunikasi"
+        C(Broker MQTT HiveMQ);
+    end
 
-Proyek ini dibangun menggunakan kombinasi hardware, software, dan protokol berikut:
+    subgraph "Backend Lokal"
+        D[Skrip Python] -->|Menyimpan Data| E(Database SQLite 'climate_data.db');
+    end
 
--   **Hardware**:
-    -   Mikrokontroler: **ESP32 DevKitC V4**
-    -   Sensor: **DHT22** (untuk suhu dan kelembapan)
--   **Protokol Komunikasi**: **MQTT**
--   **Broker MQTT**: **HiveMQ Public Broker** (`broker.hivemq.com`)
--   **Bahasa Pemrograman**:
-    -   Sensor Node: **C++** dengan **Arduino Framework**
-    -   Data Logger: **Python 3**
--   **Penyimpanan Data**: **SQLite**
--   **Lingkungan Simulasi & Pengembangan**:
-    -   **Wokwi** (untuk simulasi hardware ESP32)
-    -   **Visual Studio Code** + **PlatformIO** (untuk pengembangan dan upload kode ke ESP32 fisik)
--   **Visualisasi**: **Grafana**
+    subgraph "Visualisasi (Pilih Salah Satu)"
+        F[Opsi 1: Dashboard Web (Dash)] -->|Membaca Data| E;
+        G[Opsi 2: Aplikasi Desktop (Matplotlib)] -->|Membaca Data| E;
+    end
 
----
+    B -->|Publish ke Topik '0013/climate'| C;
+    C -->|Subscribe ke Topik '0013/climate'| D;
+```
 
-## 3. Alur Data (Sensor ke Visualisasi)
+## Teknologi yang Digunakan
 
-Aliran data dalam sistem ini berjalan secara sekuensial melalui beberapa tahapan:
+- **Hardware / Simulasi**:
+  - Mikrokontroler: **ESP32 DevKitC V4**
+  - Sensor: **DHT22** (suhu dan kelembapan)
+  - Simulator: **Wokwi**
+- **Protokol Komunikasi**: **MQTT**
+- **Broker MQTT**: **HiveMQ Public Broker** (`broker.hivemq.com`)
+- **Backend & Penyimpanan**:
+  - Bahasa: **Python 3**
+  - Database: **SQLite**
+- **Frontend / Visualisasi**:
+  - **Opsi 1**: **Plotly & Dash** (untuk dasbor web)
+  - **Opsi 2**: **Matplotlib & Tkinter** (untuk aplikasi desktop)
+- **Lingkungan Pengembangan**:
+  - **Visual Studio Code** + Ekstensi **PlatformIO** & **Python**.
 
-1.  **Pengambilan Data**: ESP32 membaca data suhu dan kelembapan dari sensor DHT22 setiap 5 detik.
-2.  **Pemformatan Data**: Data mentah diformat ke dalam sebuah payload **JSON** agar terstruktur. Contoh: `{"temperature": 25.5, "humidity": 60.2}`.
-3.  **Publikasi (Publish)**: ESP32, yang berperan sebagai klien MQTT, mempublikasikan (mengirim) data JSON ke topic **`0013/climate`** di broker HiveMQ.
-4.  **Penerimaan (Subscribe)**: Skrip Python `gui.py` yang berjalan di komputer lokal sudah berlangganan ke topic `0013/climate`. Ia akan langsung menerima data JSON yang dikirim oleh ESP32.
-5.  **Penyimpanan**: Setelah menerima data, skrip Python akan mem-parsing JSON, menambahkan _timestamp_, dan menyimpan data suhu dan kelembapan ke dalam tabel `climate` di database SQLite (`climate_data.db`).
-6.  **Visualisasi**: Server Grafana yang berjalan di komputer lokal dikonfigurasi untuk terhubung ke file database SQLite.
-7.  **Tampilan**: Grafana secara periodik mengirimkan query SQL ke database untuk mengambil data terbaru dan menampilkannya dalam bentuk grafik _time-series_, _gauge_, atau panel statistik lainnya di dasbor yang bisa diakses melalui browser.
+## Struktur Folder
 
----
+```
+proyek-monitoring-suhu/
+├── src/
+│   ├── dashboard.py         # Backend & Frontend untuk versi Plotly/Dash
+│   ├── gui.py               # Backend & Frontend untuk versi Matplotlib/Tkinter
+│   ├── main.cpp             # Kode firmware untuk ESP32
+│   └── diagram.json         # Konfigurasi sirkuit untuk Wokwi
+├── .venv/                   # Folder virtual environment (dibuat otomatis)
+├── requirements.txt         # Daftar semua package Python yang dibutuhkan
+├── run_dashboard.bat        # Skrip untuk menjalankan versi Plotly/Dash
+└── run_gui.bat              # Skrip untuk menjalankan versi Matplotlib/Tkinter
+```
 
-## 4. Penyimpanan & Visualisasi
+## Panduan Setup (Wajib Dilakukan Pertama Kali)
 
-### Penyimpanan (Storage)
-
-Penyimpanan data historis menggunakan **SQLite**, sebuah sistem manajemen database yang ringan, berbasis file, dan tidak memerlukan server terpisah. Ini membuatnya ideal untuk aplikasi skala kecil hingga menengah dan pengembangan lokal.
-
--   **File Database**: `climate_data.db`
--   **Struktur Tabel**: `climate`
-    -   `id`: INTEGER (Primary Key)
-    -   `timestamp`: DATETIME (Waktu data disimpan)
-    -   `temperature`: REAL (Nilai suhu dalam Celcius)
-    -   `humidity`: REAL (Nilai kelembapan dalam %)
-
-### Visualisasi (Visualization)
-
-Untuk visualisasi, **Grafana** adalah platform yang direkomendasikan. Grafana memungkinkan pembuatan dasbor yang kaya fitur dan interaktif.
-
--   **Sumber Data**: Grafana terhubung langsung ke file `climate_data.db` menggunakan plugin SQLite.
--   **Contoh Panel**:
-    -   **Grafik Time Series**: Menampilkan tren suhu dan kelembapan dari waktu ke waktu.
-    -   **Gauge**: Menampilkan nilai suhu dan kelembapan terkini secara visual.
-    -   **Stat Panel**: Menampilkan nilai agregat seperti suhu tertinggi/terendah dalam 24 jam terakhir.
-
----
-
-## 5. Cara Setup
-
-Berikut adalah langkah-langkah untuk menjalankan keseluruhan proyek ini di lingkungan lokal.
+Sebelum menjalankan aplikasi, Anda perlu menyiapkan lingkungan pengembangan.
 
 ### Prasyarat
 
--   **Visual Studio Code** dengan ekstensi **PlatformIO IDE** terinstal.
--   **Python 3** terinstal di komputer.
--   Akses internet.
--   **Grafana** terinstal di komputer.
+- [Python 3.8+](https://www.python.org/downloads/) terinstal. Pastikan untuk mencentang "Add Python to PATH" saat instalasi.
+- [Visual Studio Code](https://code.visualstudio.com/) terinstal.
+- Di dalam VS Code, instal ekstensi berikut:
+  - `Python` (dari Microsoft)
+  - `PlatformIO IDE` (untuk pengembangan ESP32)
+  - `Wokwi Simulator`
 
-### Langkah-langkah
+### Langkah-langkah Instalasi
 
-1.  **Setup Backend (Python Logger)**
+Proyek ini dilengkapi dengan skrip `.bat` untuk mengotomatiskan seluruh proses. Cukup jalankan skrip yang sesuai dengan visualisasi yang ingin Anda coba, dan skrip tersebut akan menangani pembuatan virtual environment dan instalasi package secara otomatis.
 
-    -   Buka terminal atau CMD.
-    -   Buat dan aktifkan sebuah virtual environment Python di dalam folder proyek untuk menjaga dependensi tetap bersih.
-        ```bash
-        # Membuat virtual environment
-        python -m venv .venv
-        # Mengaktifkan di Windows
-        .\.venv\Scripts\activate
-        # Mengaktifkan di macOS/Linux
-        # source .venv/bin/activate
-        ```
-    -   Instal library yang dibutuhkan:
-        ```bash
-        pip install paho-mqtt
-        ```
-    -   Jalankan skrip logger. Biarkan terminal ini tetap berjalan di latar belakang.
-        ```bash
-        python gui.py
-        ```
-    -   Kamu akan melihat pesan "Berhasil terhubung ke Broker MQTT!" jika koneksi berhasil.
+## Cara Menjalankan Aplikasi
 
-2.  **Setup Sensor Node (ESP32)**
-
-    -   Buka folder proyek ini menggunakan Visual Studio Code.
-    -   PlatformIO akan secara otomatis mendeteksi file `platformio.ini` dan menginstal _toolchain_ serta library yang diperlukan.
-    -   Mulai simulasi dengan menekan `F1` dan memilih `Wokwi: Start Simulator`.
-    -   Kode akan otomatis berjalan di ESP32 virtual.
-
-3.  **Verifikasi Alur Data**
-
-    -   Perhatikan output di terminal tempat skrip `gui.py` berjalan. Kamu akan melihat data suhu dan kelembapan baru dicatat setiap beberapa detik, yang menandakan seluruh alur dari sensor ke database sudah berfungsi.
-
-4.  **Setup Visualisasi (Grafana)**
-
-# Panduan Lengkap Setup Grafana untuk Proyek IoT
-
-Dokumen ini berisi panduan langkah demi langkah untuk menginstal, mengkonfigurasi, dan memvisualisasikan data sensor dari database SQLite menggunakan Grafana di lingkungan Windows.
+Pastikan Anda sudah menjalankan **Sensor Node (ESP32)** terlebih dahulu (lihat panduan di bawah). Setelah itu, pilih salah satu dari dua opsi visualisasi berikut:
 
 ---
 
-## Langkah 1: Menginstal Grafana
+### Opsi 1: Visualisasi Web dengan Plotly & Dash (Direkomendasikan)
 
-Langkah pertama adalah mengunduh dan menginstal aplikasi Grafana di komputer.
+Metode ini akan menjalankan server web lokal. Anda akan melihat dasbor melalui browser.
 
-1.  **Unduh Installer**: Buka halaman unduhan resmi Grafana di **[https://grafana.com/grafana/download](https://grafana.com/grafana/download)**.
-2.  Pilih versi **terbaru** dan sistem operasi **Windows**.
-3.  Klik tombol **Download the installer**.
-4.  Jalankan file `.msi` yang sudah diunduh. Proses instalasi sangat standar, cukup klik **"Next"** beberapa kali seperti menginstal aplikasi Windows pada umumnya.
-
----
-
-## Langkah 2: Menjalankan dan Mengakses Server Grafana
-
-Setelah instalasi, server Grafana akan berjalan otomatis sebagai layanan (service) di latar belakang.
-
-1.  **Buka Browser**: Buka browser web (Chrome, Firefox, dll.).
-2.  **Akses Alamat Grafana**: Ketik alamat berikut di address bar:
-    ```
-    http://localhost:3000
-    ```
-3.  **Login**: Gunakan kredensial default untuk login pertama kali:
-    -   **Username**: `admin`
-    -   **Password**: `admin`
-4.  **Ubah Password**: Grafana akan memintamu untuk membuat password baru yang lebih aman.
-
-> **Troubleshooting**: Jika halaman tidak bisa diakses, buka aplikasi **"Services"** di Windows, cari layanan **"Grafana"**, klik kanan, dan pilih **"Start"**.
+- **Cara Otomatis (Windows)**:
+  - Klik dua kali file **`run_dashboard.bat`**.
+- **Cara Manual**:
+  1.  Aktifkan virtual environment (`.\venv\Scripts\activate`).
+  2.  Jalankan perintah: `python src/dashboard.py`
+  3.  Buka browser Anda dan kunjungi alamat **`http://127.0.0.1:8050/`**.
 
 ---
 
-## Langkah 3: Menginstal Plugin SQLite
+### Opsi 2: Visualisasi Desktop dengan Matplotlib & Tkinter
 
-Plugin ini wajib diinstal agar Grafana bisa membaca file database `.db` milikmu.
+Metode ini akan membuka jendela aplikasi desktop secara langsung.
 
-1.  **Buka CMD sebagai Administrator**:
-
-    -   Klik tombol **Windows**, ketik `cmd`.
-    -   Pada hasil pencarian **"Command Prompt"**, klik kanan, lalu pilih **"Run as administrator"**.
-
-2.  **Pindah ke Direktori `bin` Grafana**:
-
-    ```cmd
-    cd "C:\Program Files\GrafanaLabs\grafana\bin"
-    ```
-
-3.  **Jalankan Perintah Instalasi**:
-
-    ```cmd
-    grafana-cli plugins install frser-sqlite-datasource
-    ```
-
-4.  **Restart Server Grafana (Wajib)**:
-    -   Buka kembali aplikasi **"Services"**.
-    -   Cari **"Grafana"**, klik kanan, dan pilih **"Restart"**.
+- **Cara Otomatis (Windows)**:
+  - Klik dua kali file **`run_gui.bat`**.
+- **Cara Manual**:
+  1.  Aktifkan virtual environment (`.\venv\Scripts\activate`).
+  2.  Jalankan perintah: `python src/gui.py`
 
 ---
 
-## Langkah 4: Menambahkan SQLite sebagai Sumber Data (Data Source)
+## Menjalankan Sensor Node (ESP32)
 
-Sekarang kita akan menghubungkan Grafana ke file `climate_data.db`.
+Ini adalah langkah pertama yang harus dilakukan. Anda bisa menjalankannya melalui simulasi di Wokwi.
 
-1.  Buka dasbor Grafana di `http://localhost:3000` dan login.
-2.  Di menu sebelah kiri, klik ikon gerigi (⚙️ **Administration**) lalu pilih **Data sources**.
-3.  Klik tombol biru **"Add new data source"**.
-4.  Di kolom pencarian, ketik `SQLite` dan pilih.
-5.  **Konfigurasi Path**:
-    -   **Name**: Beri nama yang mudah diingat, misalnya `Database Suhu Lokal`.
-    -   **Path**: Masukkan **path lengkap (absolut)** ke file `climate_data.db`.
-        > Contoh: `C:\Users\NamaUser\Documents\ProyekIoT\climate_data.db`.
-        > _Tips: Untuk mendapatkan path lengkap, cari file-nya di File Explorer, tahan tombol `Shift` lalu klik kanan pada file, dan pilih "Copy as path"._
-6.  **Simpan & Tes**: Gulir ke bawah dan klik tombol **"Save & test"**. Kamu akan melihat notifikasi hijau bertuliskan "Data source is working" jika berhasil.
+### Opsi A: Menggunakan Wokwi di VS Code (Lokal)
 
----
+1.  Buka folder proyek ini di Visual Studio Code.
+2.  Tunggu PlatformIO selesai menginisialisasi proyek.
+3.  Tekan `F1`, lalu ketik dan pilih **`Wokwi: Start Simulator`**.
+4.  Simulator akan terbuka di tab baru dan kode `main.cpp` akan otomatis berjalan.
 
-## Langkah 5: Membuat Panel dan Memvisualisasikan Data
+### Opsi B: Menggunakan Wokwi di Browser (Cloud)
 
-Ini adalah langkah terakhir untuk menampilkan data dalam bentuk grafik.
+Jika Anda tidak menggunakan VS Code, Anda bisa menjalankan simulasi langsung di situs Wokwi.
 
-1.  Di menu kiri, klik ikon plus (➕ **New**) dan pilih **New Dashboard**.
-2.  Klik tombol **"Add visualization"**.
-3.  **Pilih Sumber Data**: Di bagian bawah, pastikan dropdown **"Data source"** sudah memilih `Database Suhu Lokal`.
-4.  **Tulis Query SQL**: Di bawahnya, klik tombol **"</> Query"** untuk beralih ke mode teks dan masukkan query berikut:
-    ```sql
-    SELECT
-      CAST(strftime('%s', timestamp) AS INT) * 1000 AS "time",
-      temperature,
-      humidity
-    FROM climate
-    ORDER BY "time" ASC
-    ```
-5.  **Atur Format**: Di sebelah kanan query, pastikan opsi **Format** diatur sebagai **Time series**.
-6.  Grafik akan otomatis muncul di bagian atas.
-7.  **Kustomisasi**: Di panel kanan (Panel options), beri **Title** pada panelmu, misalnya "Tren Suhu & Kelembapan".
-8.  **Simpan**: Klik tombol **"Apply"** di pojok kanan atas untuk menyimpan panel, lalu klik ikon disket (💾) untuk menyimpan keseluruhan dasbor.
+1.  Buka [wokwi.com](https://wokwi.com/).
+2.  Buat proyek baru dengan memilih template **ESP32**.
+3.  Salin seluruh isi file **`main.cpp`** dari proyek ini dan tempelkan ke tab `sketch.cpp` di Wokwi.
+4.  Salin seluruh isi file **`diagram.json`** dari proyek ini dan tempelkan ke tab `diagram.json` di Wokwi.
+5.  Klik tombol **Start Simulation** (panah hijau).

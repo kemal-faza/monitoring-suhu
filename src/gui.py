@@ -15,11 +15,12 @@ import matplotlib.dates as mdates
 
 # --- KONFIGURASI ---
 MQTT_BROKER = "broker.hivemq.com"
-MQTT_TOPIC = "0013/climate"
+MQTT_TOPIC = "Informatika/IoT-E/Kelompok9/climate"
 DB_FILE = "climate_data.db"
 # --------------------
 
 data_queue = queue.Queue()
+
 
 class MqttThread(threading.Thread):
     def __init__(self, queue_param):
@@ -58,12 +59,13 @@ class MqttThread(threading.Thread):
     def stop(self):
         self.running = False
 
+
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Real-time Climate Monitor")
         # Menambah tinggi jendela untuk mengakomodasi 2 grafik
-        self.geometry("800x700") 
+        self.geometry("800x700")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.timestamps = []
@@ -78,19 +80,26 @@ class App(tk.Tk):
         control_frame = tk.Frame(self)
         control_frame.pack(pady=10)
 
-        self.btn_start = tk.Button(control_frame, text="Start Listening", command=self.start_mqtt)
+        self.btn_start = tk.Button(
+            control_frame, text="Start Listening", command=self.start_mqtt
+        )
         self.btn_start.pack(side=tk.LEFT, padx=5)
 
-        self.btn_stop = tk.Button(control_frame, text="Stop Listening", command=self.stop_mqtt, state=tk.DISABLED)
+        self.btn_stop = tk.Button(
+            control_frame,
+            text="Stop Listening",
+            command=self.stop_mqtt,
+            state=tk.DISABLED,
+        )
         self.btn_stop.pack(side=tk.LEFT, padx=5)
-        
+
         plot_frame = tk.Frame(self)
         plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # --- PERUBAHAN UTAMA 1: SETUP SUBPLOT ---
         # Membuat Figure yang akan berisi 2 subplot
         fig = Figure(figsize=(5, 6), dpi=100)
-        
+
         # Membuat 2 subplot (2 baris, 1 kolom).
         # ax_temp adalah plot ke-1 (atas)
         self.ax_temp = fig.add_subplot(2, 1, 1)
@@ -103,19 +112,23 @@ class App(tk.Tk):
         self.canvas = FigureCanvasTkAgg(fig, master=plot_frame)
         self.canvas.draw()
         self.canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        
-        self.ani = animation.FuncAnimation(fig, self.update_plot, interval=1000, blit=False)
+
+        self.ani = animation.FuncAnimation(
+            fig, self.update_plot, interval=1000, blit=False
+        )
 
     def setup_database(self):
         self.conn = sqlite3.connect(DB_FILE, check_same_thread=False)
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS climate (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp DATETIME NOT NULL,
                 temperature REAL NOT NULL,
                 humidity REAL NOT NULL
-            )""")
+            )"""
+        )
         self.conn.commit()
         print(f"Database '{DB_FILE}' siap.")
 
@@ -131,15 +144,17 @@ class App(tk.Tk):
 
                 if temp is not None and hum is not None:
                     cursor = self.conn.cursor()
-                    cursor.execute("INSERT INTO climate (timestamp, temperature, humidity) VALUES (?, ?, ?)",
-                                   (dt_object.strftime("%Y-%m-%d %H:%M:%S"), temp, hum))
+                    cursor.execute(
+                        "INSERT INTO climate (timestamp, temperature, humidity) VALUES (?, ?, ?)",
+                        (dt_object.strftime("%Y-%m-%d %H:%M:%S"), temp, hum),
+                    )
                     self.conn.commit()
                     print(f"Data tersimpan: {dt_object} - Temp: {temp}°C, Hum: {hum}%")
 
                     self.timestamps.append(dt_object)
                     self.temperatures.append(temp)
                     self.humidities.append(hum)
-                    
+
                     if len(self.timestamps) > 50:
                         self.timestamps.pop(0)
                         self.temperatures.pop(0)
@@ -156,22 +171,26 @@ class App(tk.Tk):
         self.ax_hum.clear()
 
         # --- Plot 1: Grafik Suhu (Atas) ---
-        self.ax_temp.plot(self.timestamps, self.temperatures, 'r-', marker='o', markersize=3)
+        self.ax_temp.plot(
+            self.timestamps, self.temperatures, "r-", marker="o", markersize=3
+        )
         self.ax_temp.set_title("Suhu")
         self.ax_temp.set_ylabel("Suhu (°C)")
         self.ax_temp.grid(True)
         # Sembunyikan label sumbu-x di grafik atas agar tidak redundan
-        self.ax_temp.tick_params(axis='x', labelbottom=False)
+        self.ax_temp.tick_params(axis="x", labelbottom=False)
 
         # --- Plot 2: Grafik Kelembaban (Bawah) ---
-        self.ax_hum.plot(self.timestamps, self.humidities, 'b-', marker='o', markersize=3)
+        self.ax_hum.plot(
+            self.timestamps, self.humidities, "b-", marker="o", markersize=3
+        )
         self.ax_hum.set_title("Kelembaban")
         self.ax_hum.set_ylabel("Kelembaban (%)")
         self.ax_hum.set_xlabel("Waktu")
         self.ax_hum.grid(True)
-        
+
         # Atur format waktu di sumbu-x untuk grafik bawah
-        self.ax_hum.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
+        self.ax_hum.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
         self.ax_hum.figure.autofmt_xdate()
 
         # Pastikan layout rapi setelah update
@@ -200,6 +219,7 @@ class App(tk.Tk):
                 self.conn.close()
                 print("Koneksi database ditutup.")
             self.destroy()
+
 
 if __name__ == "__main__":
     app = App()

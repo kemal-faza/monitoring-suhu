@@ -47,7 +47,7 @@ echo Buka browser dan akses http://127.0.0.1:8050/
 echo Tekan CTRL+C di jendela ini untuk menghentikan server.
 echo.
 :: PERBAIKAN: Menggunakan tanda kutip di sekitar path
-python "src/dashboard.py"
+python "src/single_node/dashboard.py"
 
 echo.
 echo ==========================================================

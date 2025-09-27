@@ -4,13 +4,13 @@ Selamat datang di proyek monitoring IoT _end-to-end_. Sistem ini dirancang untuk
 
 ## Fitur Utama
 
-- **Monitoring Real-time**: Lihat data suhu dan kelembapan saat itu juga.
-- **Pencatatan Data Historis**: Semua data sensor disimpan dalam database lokal SQLite untuk analisis di kemudian hari.
-- **Dua Opsi Visualisasi**:
-  1.  **Dasbor Web (Direkomendasikan)**: Antarmuka modern, interaktif, dan dapat diakses melalui browser, dibangun dengan Plotly & Dash.
-  2.  **Aplikasi Desktop**: Jendela aplikasi sederhana yang ringan dan berjalan secara native di OS Anda, dibangun dengan Matplotlib & Tkinter.
-- **Arsitektur Berbasis MQTT**: Menggunakan protokol MQTT yang ringan dan efisien, standar industri untuk komunikasi IoT.
-- **Simulasi Hardware**: Proyek ini dapat dijalankan sepenuhnya menggunakan simulator Wokwi, tanpa memerlukan perangkat keras fisik.
+-   **Monitoring Real-time**: Lihat data suhu dan kelembapan saat itu juga.
+-   **Pencatatan Data Historis**: Semua data sensor disimpan dalam database lokal SQLite untuk analisis di kemudian hari.
+-   **Dua Opsi Visualisasi**:
+    1.  **Dasbor Web (Direkomendasikan)**: Antarmuka modern, interaktif, dan dapat diakses melalui browser, dibangun dengan Plotly & Dash.
+    2.  **Aplikasi Desktop**: Jendela aplikasi sederhana yang ringan dan berjalan secara native di OS Anda, dibangun dengan Matplotlib & Tkinter.
+-   **Arsitektur Berbasis MQTT**: Menggunakan protokol MQTT yang ringan dan efisien, standar industri untuk komunikasi IoT.
+-   **Simulasi Hardware**: Proyek ini dapat dijalankan sepenuhnya menggunakan simulator Wokwi, tanpa memerlukan perangkat keras fisik.
 
 ## Topologi / Arsitektur Sistem
 
@@ -41,20 +41,20 @@ graph TD
 
 ## Teknologi yang Digunakan
 
-- **Hardware / Simulasi**:
-  - Mikrokontroler: **ESP32 DevKitC V4**
-  - Sensor: **DHT22** (suhu dan kelembapan)
-  - Simulator: **Wokwi**
-- **Protokol Komunikasi**: **MQTT**
-- **Broker MQTT**: **HiveMQ Public Broker** (`broker.hivemq.com`)
-- **Backend & Penyimpanan**:
-  - Bahasa: **Python 3**
-  - Database: **SQLite**
-- **Frontend / Visualisasi**:
-  - **Opsi 1**: **Plotly & Dash** (untuk dasbor web)
-  - **Opsi 2**: **Matplotlib & Tkinter** (untuk aplikasi desktop)
-- **Lingkungan Pengembangan**:
-  - **Visual Studio Code** + Ekstensi **PlatformIO** & **Python**.
+-   **Hardware / Simulasi**:
+    -   Mikrokontroler: **ESP32 DevKitC V4**
+    -   Sensor: **DHT22** (suhu dan kelembapan)
+    -   Simulator: **Wokwi**
+-   **Protokol Komunikasi**: **MQTT**
+-   **Broker MQTT**: **HiveMQ Public Broker** (`broker.hivemq.com`)
+-   **Backend & Penyimpanan**:
+    -   Bahasa: **Python 3**
+    -   Database: **SQLite**
+-   **Frontend / Visualisasi**:
+    -   **Opsi 1**: **Plotly & Dash** (untuk dasbor web)
+    -   **Opsi 2**: **Matplotlib & Tkinter** (untuk aplikasi desktop)
+-   **Lingkungan Pengembangan**:
+    -   **Visual Studio Code** + Ekstensi **PlatformIO** & **Python**.
 
 ## Struktur Folder
 
@@ -77,12 +77,12 @@ Sebelum menjalankan aplikasi, Anda perlu menyiapkan lingkungan pengembangan.
 
 ### Prasyarat
 
-- [Python 3.8+](https://www.python.org/downloads/) terinstal. Pastikan untuk mencentang "Add Python to PATH" saat instalasi.
-- [Visual Studio Code](https://code.visualstudio.com/) terinstal.
-- Di dalam VS Code, instal ekstensi berikut:
-  - `Python` (dari Microsoft)
-  - `PlatformIO IDE` (untuk pengembangan ESP32)
-  - `Wokwi Simulator`
+-   [Python 3.8+](https://www.python.org/downloads/) terinstal. Pastikan untuk mencentang "Add Python to PATH" saat instalasi.
+-   [Visual Studio Code](https://code.visualstudio.com/) terinstal.
+-   Di dalam VS Code, instal ekstensi berikut:
+    -   `Python` (dari Microsoft)
+    -   `PlatformIO IDE` (untuk pengembangan ESP32)
+    -   `Wokwi Simulator`
 
 ### Langkah-langkah Instalasi
 
@@ -98,12 +98,12 @@ Pastikan Anda sudah menjalankan **Sensor Node (ESP32)** terlebih dahulu (lihat p
 
 Metode ini akan menjalankan server web lokal. Anda akan melihat dasbor melalui browser.
 
-- **Cara Otomatis (Windows)**:
-  - Klik dua kali file **`run_dashboard.bat`**.
-- **Cara Manual**:
-  1.  Aktifkan virtual environment (`.\venv\Scripts\activate`).
-  2.  Jalankan perintah: `python src/dashboard.py`
-  3.  Buka browser Anda dan kunjungi alamat **`http://127.0.0.1:8050/`**.
+-   **Cara Otomatis (Windows)**:
+    -   Klik dua kali file **`run_dashboard.bat`**.
+-   **Cara Manual**:
+    1.  Aktifkan virtual environment (`.venv\Scripts\activate`).
+    2.  Jalankan perintah: `python src/dashboard.py`
+    3.  Buka browser Anda dan kunjungi alamat **`http://127.0.0.1:8050/`**.
 
 ---
 
@@ -111,11 +111,11 @@ Metode ini akan menjalankan server web lokal. Anda akan melihat dasbor melalui b
 
 Metode ini akan membuka jendela aplikasi desktop secara langsung.
 
-- **Cara Otomatis (Windows)**:
-  - Klik dua kali file **`run_gui.bat`**.
-- **Cara Manual**:
-  1.  Aktifkan virtual environment (`.\venv\Scripts\activate`).
-  2.  Jalankan perintah: `python src/gui.py`
+-   **Cara Otomatis (Windows)**:
+    -   Klik dua kali file **`run_gui.bat`**.
+-   **Cara Manual**:
+    1.  Aktifkan virtual environment (`.\venv\Scripts\activate`).
+    2.  Jalankan perintah: `python src/gui.py`
 
 ---
 

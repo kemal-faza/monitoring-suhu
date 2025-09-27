@@ -17,7 +17,7 @@ if not exist "%VENV_DIR%\Scripts\activate.bat" (
     echo Virtual environment tidak ditemukan. Membuat baru...
     python -m venv "%VENV_DIR%"
     if %errorlevel% neq 0 (
-        echo GAGAL membuat virtual enjvironment. Pastikan Python terinstal dan ada di PATH.
+        echo GAGAL membuat virtual environment. Pastikan Python terinstal dan ada di PATH.
         pause
         exit /b
     )
@@ -37,7 +37,7 @@ echo.
 :: Langkah 3: Install semua package yang dibutuhkan
 echo [3/4] Menginstall/memverifikasi package dari requirements.txt...
 :: PERBAIKAN: Menggunakan tanda kutip di sekitar path
-pip install -r "requirements.txt" --quiet --no-warn-script-location
+pip install -r "requirements.txt" --no-warn-script-location
 echo Package siap.
 echo.
 

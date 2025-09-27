@@ -1,132 +1,174 @@
+// Contoh kode untuk ESP32 Node yang sudah disederhanakan
+// untuk kemudahan deployment multiple nodes
+
 #include <WiFi.h>
 #include <PubSubClient.h>
-#include <DHT.h>
 #include <ArduinoJson.h>
-#include "time.h" // Diperlukan untuk NTP
+#include <DHT.h>
 
-// --- KONFIGURASI ---
+// ========================================
+// KONFIGURASI YANG HARUS DIGANTI PER NODE
+// ========================================
+
+// WiFi Settings (sama untuk semua node)
 const char *ssid = "Wokwi-GUEST";
 const char *password = "";
+
+// Node Settings (GANTI UNTUK SETIAP NODE!)
+const char *NODE_ID = "node_001"; // node_001, node_002, node_003, dst
+const float POS_X = 25.0;         // Posisi X dalam meter (0-100)
+const float POS_Y = 25.0;         // Posisi Y dalam meter (0-100)
+
+// Hardware Settings
+#define DHT_PIN 4      // Pin sensor DHT
+#define DHT_TYPE DHT22 // DHT22 atau DHT11
+#define LED_PIN 2      // LED indikator (built-in ESP32)
+
+// ========================================
+// KONFIGURASI SISTEM (tidak perlu diubah)
+// ========================================
 const char *mqtt_server = "broker.hivemq.com";
-const char *mqtt_topic = "Informatika/IoT-E/Kelompok9/climate";
+const char *mqtt_base_topic = "Informatika/IoT-E/Kelompok9/multi_node";
+const unsigned long SEND_INTERVAL = 5000; // Kirim data setiap 5 detik
 
-#define DHTPIN 4
-#define DHTTYPE DHT22
-
-// --- KONFIGURASI WAKTU (NTP) ---
-const char* ntpServer = "pool.ntp.org";
-const long  gmtOffset_sec = 3600 * 7; // GMT+7 (WIB)
-const int   daylightOffset_sec = 0;
-
-// --- KONFIGURASI ALARM LED ---
-#define LED_LOW_TEMP    12 // Pin GPIO untuk LED suhu rendah (Biru)
-#define LED_NORMAL_TEMP 13 // Pin GPIO untuk LED suhu normal (Hijau)
-#define LED_HIGH_TEMP   14 // Pin GPIO untuk LED suhu tinggi (Merah)
-
-#define TEMP_THRESHOLD_LOW  45.0 // Batas bawah suhu normal
-#define TEMP_THRESHOLD_HIGH 55.0 // Batas atas suhu normal
-// --------------------
-
+// ========================================
+// INISIALISASI
+// ========================================
+DHT dht(DHT_PIN, DHT_TYPE);
 WiFiClient espClient;
 PubSubClient client(espClient);
-DHT dht(DHTPIN, DHTTYPE);
 
-// Fungsi untuk mengontrol LED
-void setAlarmLED(float temperature) {
-  // Matikan semua LED terlebih dahulu
-  digitalWrite(LED_LOW_TEMP, LOW);
-  digitalWrite(LED_NORMAL_TEMP, LOW);
-  digitalWrite(LED_HIGH_TEMP, LOW);
+String mqtt_topic;
+unsigned long lastSend = 0;
 
-  // Nyalakan LED yang sesuai
-  if (temperature < TEMP_THRESHOLD_LOW) {
-    digitalWrite(LED_LOW_TEMP, HIGH); // Suhu dingin
-  } else if (temperature >= TEMP_THRESHOLD_LOW && temperature <= TEMP_THRESHOLD_HIGH) {
-    digitalWrite(LED_NORMAL_TEMP, HIGH); // Suhu normal
-  } else {
-    digitalWrite(LED_HIGH_TEMP, HIGH); // Suhu panas
-  }
-}
+// ========================================
+// FORWARD DECLARATIONS
+// ========================================
+void connectWiFi();
+void connectMQTT();
+void sendSensorData();
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
+  Serial.println("\n=== ESP32 Multi-Node Sensor ===");
+  printf("Node ID: %s\n", NODE_ID);
+  printf("Position: (%.1f, %.1f)\n", POS_X, POS_Y);
+
+  pinMode(LED_PIN, OUTPUT);
   dht.begin();
 
-  // Setup pin LED sebagai OUTPUT
-  pinMode(LED_LOW_TEMP, OUTPUT);
-  pinMode(LED_NORMAL_TEMP, OUTPUT);
-  pinMode(LED_HIGH_TEMP, OUTPUT);
+  // Setup topic MQTT
+  mqtt_topic = String(mqtt_base_topic) + "/" + String(NODE_ID);
 
   // Koneksi WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nWiFi Terhubung!");
-  Serial.print("Alamat IP ESP32: ");
-  Serial.println(WiFi.localIP());
+  connectWiFi();
 
-  // Sinkronisasi waktu dari server NTP
-  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-  Serial.println("Waktu sudah disinkronisasi");
-
-  // Koneksi MQTT
+  // Setup MQTT
   client.setServer(mqtt_server, 1883);
+  connectMQTT();
+
+  Serial.println("Setup selesai!");
 }
 
-void loop() {
-  if (!client.connected()) {
-    Serial.print("Mencoba koneksi MQTT...");
-    if (client.connect("esp32-client")) {
-      Serial.println("terhubung!");
-    } else {
-      Serial.print("gagal, rc=");
-      Serial.print(client.state());
-      Serial.println(" coba lagi dalam 5 detik");
-      delay(5000);
-      return;
-    }
+void loop()
+{
+  // Pastikan koneksi tetap aktif
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    connectWiFi();
+  }
+
+  if (!client.connected())
+  {
+    connectMQTT();
   }
 
   client.loop();
 
+  // Kirim data sensor
+  if (millis() - lastSend > SEND_INTERVAL)
+  {
+    sendSensorData();
+    lastSend = millis();
+  }
+
+  delay(100);
+}
+
+void connectWiFi()
+{
+  printf("Menghubungkan ke WiFi: %s", ssid);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nWiFi terhubung!");
+  printf("IP: %s\n", WiFi.localIP().toString().c_str());
+  digitalWrite(LED_PIN, HIGH);
+}
+
+void connectMQTT()
+{
+  while (!client.connected())
+  {
+    Serial.print("Menghubungkan ke MQTT...");
+
+    String clientId = "ESP32_" + String(NODE_ID) + "_" + String(random(0xffff), HEX);
+
+    if (client.connect(clientId.c_str()))
+    {
+      Serial.println(" terhubung!");
+    }
+    else
+    {
+      printf(" gagal, rc=%d. Coba lagi dalam 5 detik\n", client.state());
+      delay(5000);
+    }
+  }
+}
+
+void sendSensorData()
+{
   // Baca sensor
-  float humidity = dht.readHumidity();
   float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
 
-  if (isnan(humidity) || isnan(temperature)) {
-    Serial.println("Gagal membaca dari sensor DHT!");
-    delay(2000);
+  // Validasi data
+  if (isnan(temperature) || isnan(humidity))
+  {
+    Serial.println("Gagal membaca sensor!");
     return;
   }
 
-  // Ambil Timestamp 
-  struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    Serial.println("Gagal mendapatkan waktu lokal");
-    return;
-  }
-  time_t timestamp = mktime(&timeinfo);
-
-  // Buat data JSON
+  // Buat JSON
   JsonDocument doc;
-  doc["ts"] = timestamp; // Tambahkan Unix timestamp
+  doc["node_id"] = NODE_ID;
   doc["temperature"] = temperature;
   doc["humidity"] = humidity;
+  doc["pos_x"] = POS_X;
+  doc["pos_y"] = POS_Y;
+  doc["timestamp"] = millis() / 1000;
 
-  char jsonBuffer[128];
-  serializeJson(doc, jsonBuffer);
+  String payload;
+  serializeJson(doc, payload);
 
-  // Kirim (publish) data JSON ke broker
-  client.publish(mqtt_topic, jsonBuffer);
-    Serial.print("Data terkirim ke topic '");
-  Serial.print(mqtt_topic);
-  Serial.print("': ");
-  Serial.println(jsonBuffer);
+  // Kirim ke MQTT
+  if (client.publish(mqtt_topic.c_str(), payload.c_str()))
+  {
+    printf("[%s] T:%.1f°C H:%.1f%% ✓\n", NODE_ID, temperature, humidity);
 
-  // --- Atur Alarm LED ---
-  setAlarmLED(temperature);
-
-  delay(5000);
+    // Blink LED sebagai indikator
+    digitalWrite(LED_PIN, LOW);
+    delay(50);
+    digitalWrite(LED_PIN, HIGH);
+  }
+  else
+  {
+    Serial.println("Gagal mengirim data!");
+  }
 }

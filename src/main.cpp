@@ -14,17 +14,17 @@ const char *mqtt_topic = "Informatika/IoT-E/Kelompok9/climate";
 #define DHTTYPE DHT22
 
 // --- KONFIGURASI WAKTU (NTP) ---
-const char *ntpServer = "pool.ntp.org";
-const long gmtOffset_sec = 3600 * 7; // GMT+7 (WIB)
-const int daylightOffset_sec = 0;
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600 * 7; // GMT+7 (WIB)
+const int   daylightOffset_sec = 0;
 
 // --- KONFIGURASI ALARM LED ---
-#define LED_LOW_TEMP 12    // Pin GPIO untuk LED suhu rendah (Biru)
+#define LED_LOW_TEMP    12 // Pin GPIO untuk LED suhu rendah (Biru)
 #define LED_NORMAL_TEMP 13 // Pin GPIO untuk LED suhu normal (Hijau)
-#define LED_HIGH_TEMP 14   // Pin GPIO untuk LED suhu tinggi (Merah)
+#define LED_HIGH_TEMP   14 // Pin GPIO untuk LED suhu tinggi (Merah)
 
-#define TEMP_THRESHOLD_LOW 24.0  // Batas bawah suhu normal
-#define TEMP_THRESHOLD_HIGH 30.0 // Batas atas suhu normal
+#define TEMP_THRESHOLD_LOW  45.0 // Batas bawah suhu normal
+#define TEMP_THRESHOLD_HIGH 55.0 // Batas atas suhu normal
 // --------------------
 
 WiFiClient espClient;
@@ -32,30 +32,23 @@ PubSubClient client(espClient);
 DHT dht(DHTPIN, DHTTYPE);
 
 // Fungsi untuk mengontrol LED
-void setAlarmLED(float temperature)
-{
+void setAlarmLED(float temperature) {
   // Matikan semua LED terlebih dahulu
   digitalWrite(LED_LOW_TEMP, LOW);
   digitalWrite(LED_NORMAL_TEMP, LOW);
   digitalWrite(LED_HIGH_TEMP, LOW);
 
   // Nyalakan LED yang sesuai
-  if (temperature < TEMP_THRESHOLD_LOW)
-  {
+  if (temperature < TEMP_THRESHOLD_LOW) {
     digitalWrite(LED_LOW_TEMP, HIGH); // Suhu dingin
-  }
-  else if (temperature >= TEMP_THRESHOLD_LOW && temperature <= TEMP_THRESHOLD_HIGH)
-  {
+  } else if (temperature >= TEMP_THRESHOLD_LOW && temperature <= TEMP_THRESHOLD_HIGH) {
     digitalWrite(LED_NORMAL_TEMP, HIGH); // Suhu normal
-  }
-  else
-  {
+  } else {
     digitalWrite(LED_HIGH_TEMP, HIGH); // Suhu panas
   }
 }
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   dht.begin();
 
@@ -66,8 +59,7 @@ void setup()
 
   // Koneksi WiFi
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED)
-  {
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
@@ -83,17 +75,12 @@ void setup()
   client.setServer(mqtt_server, 1883);
 }
 
-void loop()
-{
-  if (!client.connected())
-  {
+void loop() {
+  if (!client.connected()) {
     Serial.print("Mencoba koneksi MQTT...");
-    if (client.connect("esp32-client"))
-    {
+    if (client.connect("esp32-client")) {
       Serial.println("terhubung!");
-    }
-    else
-    {
+    } else {
       Serial.print("gagal, rc=");
       Serial.print(client.state());
       Serial.println(" coba lagi dalam 5 detik");
@@ -108,17 +95,15 @@ void loop()
   float humidity = dht.readHumidity();
   float temperature = dht.readTemperature();
 
-  if (isnan(humidity) || isnan(temperature))
-  {
+  if (isnan(humidity) || isnan(temperature)) {
     Serial.println("Gagal membaca dari sensor DHT!");
     delay(2000);
     return;
   }
 
-  // Ambil Timestamp
+  // Ambil Timestamp 
   struct tm timeinfo;
-  if (!getLocalTime(&timeinfo))
-  {
+  if(!getLocalTime(&timeinfo)){
     Serial.println("Gagal mendapatkan waktu lokal");
     return;
   }
@@ -135,7 +120,7 @@ void loop()
 
   // Kirim (publish) data JSON ke broker
   client.publish(mqtt_topic, jsonBuffer);
-  Serial.print("Data terkirim ke topic '");
+    Serial.print("Data terkirim ke topic '");
   Serial.print(mqtt_topic);
   Serial.print("': ");
   Serial.println(jsonBuffer);

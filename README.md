@@ -6,12 +6,11 @@ Selain monitoring langsung, proyek ini juga dilengkapi dengan skrip untuk **anal
 
 ## Fitur Utama
 
-- **Monitoring Real-time**: Lihat data suhu dan kelembapan saat itu juga melalui dasbor interaktif.
-- **Pencatatan Data Historis**: Semua data sensor disimpan dalam database lokal SQLite untuk analisis jangka panjang.
-- **Dua Opsi Visualisasi Real-time**:
-  1.  **Dasbor Web (Direkomendasikan)**: Antarmuka modern yang dapat diakses melalui browser, dibangun dengan Plotly & Dash.
+- **Monitoring Real-time**: Lihat data suhu dan kelembapan saat itu juga.
+- **Pencatatan Data Historis**: Semua data sensor disimpan dalam database lokal SQLite untuk analisis di kemudian hari.
+- **Dua Opsi Visualisasi**:
+  1.  **Dasbor Web (Direkomendasikan)**: Antarmuka modern, interaktif, dan dapat diakses melalui browser, dibangun dengan Plotly & Dash.
   2.  **Aplikasi Desktop**: Jendela aplikasi sederhana yang ringan dan berjalan secara native di OS Anda, dibangun dengan Matplotlib & Tkinter.
-- **Analisis Data Lanjutan**: Skrip terpisah untuk menganalisis seluruh riwayat data, menampilkan data yang diperhalus (_smoothed data_) dan garis tren (_trend line_).
 - **Arsitektur Berbasis MQTT**: Menggunakan protokol MQTT yang ringan dan efisien, standar industri untuk komunikasi IoT.
 - **Simulasi Hardware**: Proyek ini dapat dijalankan sepenuhnya menggunakan simulator Wokwi, tanpa memerlukan perangkat keras fisik.
 
@@ -54,9 +53,9 @@ graph TD
 - **Backend & Penyimpanan**:
   - Bahasa: **Python 3**
   - Database: **SQLite**
-- **Frontend & Analisis**:
-  - **Visualisasi Real-time**: **Plotly & Dash**, **Matplotlib & Tkinter**
-  - **Analisis Data**: **Pandas**, **NumPy**, **Matplotlib**
+- **Frontend / Visualisasi**:
+  - **Opsi 1**: **Plotly & Dash** (untuk dasbor web)
+  - **Opsi 2**: **Matplotlib & Tkinter** (untuk aplikasi desktop)
 - **Lingkungan Pengembangan**:
   - **Visual Studio Code** + Ekstensi **PlatformIO** & **Python**.
 
@@ -84,7 +83,10 @@ Sebelum menjalankan aplikasi, Anda perlu menyiapkan lingkungan pengembangan.
 
 - [Python 3.8+](https://www.python.org/downloads/) terinstal. Pastikan untuk mencentang "Add Python to PATH" saat instalasi.
 - [Visual Studio Code](https://code.visualstudio.com/) terinstal.
-- Di dalam VS Code, instal ekstensi berikut: `Python`, `PlatformIO IDE`, dan `Wokwi Simulator`.
+- Di dalam VS Code, instal ekstensi berikut:
+  - `Python` (dari Microsoft)
+  - `PlatformIO IDE` (untuk pengembangan ESP32)
+  - `Wokwi Simulator`
 
 ### Langkah-langkah Instalasi
 
@@ -113,7 +115,7 @@ Metode ini akan menjalankan server web lokal yang menampilkan dasbor interaktif 
 - **Cara Otomatis (Windows)**:
   - Klik dua kali file **`run_dashboard.bat`**.
 - **Cara Manual**:
-  1.  Aktifkan virtual environment (`.\venv\Scripts\activate`).
+  1.  Aktifkan virtual environment (`.venv\Scripts\activate`).
   2.  Jalankan perintah: `python src/dashboard.py`
   3.  Buka browser Anda dan kunjungi alamat **`http://127.0.0.1:8050/`**.
 

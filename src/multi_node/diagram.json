@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "author": "Multi-Node Temperature Monitoring System",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp32",
+      "top": -96,
+      "left": -76.8,
+      "attrs": {},
+      "rotate": 0,
+      "hide": false
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht22",
+      "top": -220,
+      "left": 23.2,
+      "attrs": { "temperature": "28.5", "humidity": "65" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_wifi",
+      "top": -48,
+      "left": 73.2,
+      "attrs": { "color": "blue" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_mqtt",
+      "top": -48,
+      "left": 123.2,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_wifi",
+      "top": 10,
+      "left": 83.2,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_mqtt",
+      "top": 10,
+      "left": 133.2,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "title",
+      "top": -300,
+      "left": -100,
+      "attrs": {
+        "text": "🌡️ MULTI-NODE SENSOR TEMPLATE\n\n📌 Upload script ini ke multiple ESP32\n📶 Setiap device akan menjadi node terpisah\n🔧 Ubah NODE_ID di kode untuk setiap device",
+        "font-size": "14",
+        "color": "#E91E63"
+      }
+    },
+    {
+      "type": "wokwi-text",
+      "id": "info",
+      "top": 50,
+      "left": -150,
+      "attrs": {
+        "text": "💡 PETUNJUK:\n• Blue LED = WiFi Status\n• Green LED = MQTT Status\n• DHT22 = Sensor Suhu & Kelembaban\n• Gunakan GPIO4 untuk data sensor",
+        "font-size": "12",
+        "color": "#666666"
+      }
+    }
+  ],
+  "connections": [
+    ["esp32:TX", "$serialMonitor:RX", "", []],
+    ["esp32:RX", "$serialMonitor:TX", "", []],
+
+    ["esp32:3V3", "dht22:VCC", "red", ["h0", "v-50", "h100"]],
+    ["esp32:GND.2", "dht22:GND", "black", ["h0", "v-30", "h100"]],
+    ["dht22:SDA", "esp32:4", "green", ["v0", "h-100", "v50"]],
+
+    ["esp32:2", "r_wifi:1", "blue", ["h0", "v40"]],
+    ["r_wifi:2", "led_wifi:A", "blue", ["v0", "h0"]],
+    ["led_wifi:C", "esp32:GND.1", "black", ["v0", "h-150", "v-40"]],
+
+    ["esp32:12", "r_mqtt:1", "green", ["h0", "v40"]],
+    ["r_mqtt:2", "led_mqtt:A", "green", ["v0", "h0"]],
+    ["led_mqtt:C", "esp32:GND.1", "black", ["v0", "h-200", "v-40"]]
+  ],
+  "dependencies": {}
+}

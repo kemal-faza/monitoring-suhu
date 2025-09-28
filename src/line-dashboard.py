@@ -18,10 +18,10 @@ DB_FILE = "climate_data.db"
 CLIENT_ID = f"dashboard_client_iot_project_{random.randint(0, 10000)}"
 
 # --- THRESHOLD PERINGATAN ---
-TEMP_LOW = 24.0
+TEMP_LOW = 15.0
 TEMP_HIGH = 30.0  # >30 dianggap tinggi
-TEMP_VERY_HIGH = 35.0  # >35 dianggap sangat tinggi (opsional)
-HUM_LOW = 30.0  # Silakan sesuaikan
+TEMP_VERY_HIGH = 40.0  # >40 dianggap sangat tinggi (opsional)
+HUM_LOW = 30.0
 HUM_HIGH = 70.0
 
 # --- SETUP DATA ---

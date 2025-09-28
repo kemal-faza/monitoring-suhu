@@ -1,74 +1,74 @@
 {
-  "version": 1,
-  "author": "Muhamad Kemal Faza",
-  "editor": "wokwi",
-  "parts": [
-    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": -4.76, "attrs": {} },
-    {
-      "type": "wokwi-dht22",
-      "id": "dht1",
-      "top": -143.7,
-      "left": 167.4,
-      "attrs": { "temperature": "49.4" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led1",
-      "top": -51.6,
-      "left": 416.6,
-      "attrs": { "color": "red" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led2",
-      "top": -51.6,
-      "left": 349.4,
-      "attrs": { "color": "green" }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led3",
-      "top": -51.6,
-      "left": 282.2,
-      "attrs": { "color": "blue" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r1",
-      "top": 128.75,
-      "left": 182.4,
-      "attrs": { "value": "1000" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r2",
-      "top": 157.55,
-      "left": 201.6,
-      "attrs": { "value": "1000" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r3",
-      "top": 167.15,
-      "left": 211.2,
-      "attrs": { "value": "1000" }
-    }
-  ],
-  "connections": [
-    ["esp:TX", "$serialMonitor:RX", "", []],
-    ["esp:RX", "$serialMonitor:TX", "", []],
-    ["esp:3V3", "dht1:VCC", "green", ["h-23.81", "v-38.4", "h201.6"]],
-    ["esp:GND.2", "dht1:GND", "black", ["v0", "h110.44"]],
-    ["dht1:SDA", "esp:4", "green", ["v0"]],
-    ["esp:12", "r3:1", "green", ["v0"]],
-    ["r3:2", "led3:A", "green", ["v0", "h37.2"]],
-    ["led3:C", "esp:GND.2", "green", ["v0"]],
-    ["esp:13", "r2:1", "green", ["h0"]],
-    ["r2:2", "led2:A", "green", ["v0", "h114"]],
-    ["led2:C", "esp:GND.2", "green", ["v0"]],
-    ["esp:14", "r1:1", "green", ["h0"]],
-    ["r1:2", "led1:A", "green", ["v0", "h210"]],
-    ["led1:C", "esp:GND.2", "green", ["v0"]]
-  ],
-  "dependencies": {}
+	"version": 1,
+	"author": "Multi-Node Temperature Monitoring System",
+	"editor": "wokwi",
+	"parts": [
+		{
+			"type": "board-esp32-devkit-c-v4",
+			"id": "esp32",
+			"top": -96,
+			"left": -76.8,
+			"attrs": {}
+		},
+		{
+			"type": "wokwi-dht22",
+			"id": "dht22",
+			"top": -220,
+			"left": 23.2,
+			"attrs": { "temperature": "28.5", "humidity": "65" }
+		},
+		{
+			"type": "wokwi-led",
+			"id": "led_wifi",
+			"top": -48,
+			"left": 73.2,
+			"attrs": { "color": "blue" }
+		},
+		{
+			"type": "wokwi-led",
+			"id": "led_mqtt",
+			"top": -48,
+			"left": 123.2,
+			"attrs": { "color": "green" }
+		},
+		{
+			"type": "wokwi-resistor",
+			"id": "r_wifi",
+			"top": 10,
+			"left": 83.2,
+			"attrs": { "value": "220" }
+		},
+		{
+			"type": "wokwi-resistor",
+			"id": "r_mqtt",
+			"top": 10,
+			"left": 133.2,
+			"attrs": { "value": "220" }
+		},
+		{
+			"type": "wokwi-text",
+			"id": "info",
+			"top": -211.2,
+			"left": 105.6,
+			"attrs": {
+				"text": "💡 PETUNJUK:\n• Blue LED = WiFi Status\n• Green LED = MQTT Status\n• DHT22 = Sensor Suhu & Kelembaban\n• Gunakan GPIO4 untuk data sensor",
+				"font-size": "12",
+				"color": "#666666"
+			}
+		}
+	],
+	"connections": [
+		["esp32:TX", "$serialMonitor:RX", "", []],
+		["esp32:RX", "$serialMonitor:TX", "", []],
+		["esp32:3V3", "dht22:VCC", "red", ["h0", "v-50", "h100"]],
+		["esp32:GND.2", "dht22:GND", "black", ["h0", "v-30", "h100"]],
+		["dht22:SDA", "esp32:4", "green", ["v0", "h-100", "v50"]],
+		["esp32:2", "r_wifi:1", "blue", ["h0", "v40"]],
+		["r_wifi:2", "led_wifi:A", "blue", ["v0", "h0"]],
+		["led_wifi:C", "esp32:GND.1", "black", ["v0", "h-150", "v-40"]],
+		["esp32:12", "r_mqtt:1", "green", ["h0", "v40"]],
+		["r_mqtt:2", "led_mqtt:A", "green", ["v0", "h0"]],
+		["led_mqtt:C", "esp32:GND.1", "black", ["v0", "h-200", "v-40"]]
+	],
+	"dependencies": {}
 }

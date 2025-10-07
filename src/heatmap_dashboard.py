@@ -16,7 +16,9 @@ import time
 
 # --- KONFIGURASI ---
 MQTT_BROKER = "broker.hivemq.com"
-MQTT_TOPIC = "Informatika/IoT-E/Kelompok9/multi_node/+"  # Wildcard untuk multiple nodes
+# Ganti topik wildcard dengan daftar node spesifik
+ALLOWED_NODES = ["node_001", "node_002"]  # Tambahkan ini
+MQTT_TOPIC_BASE = "Informatika/IoT-E/Kelompok9/multi_node"
 DB_FILE = "multi_node_climate.db"
 CLIENT_ID = f"multi_node_dashboard_{random.randint(0, 10000)}"
 
@@ -97,9 +99,14 @@ def update_node_status():
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
         print("MQTT Terhubung! Subscribe ke topik multi-node...")
-        result = client.subscribe(MQTT_TOPIC)
-        print(f"Subscribe result: {result}")
-        print(f"Listening to topic: {MQTT_TOPIC}")
+
+        # Subscribe ke node spesifik saja
+        for node_id in ALLOWED_NODES:
+            topic = f"{MQTT_TOPIC_BASE}/{node_id}"
+            result = client.subscribe(topic)
+            print(f"Subscribe to {topic} - Result: {result}")
+
+        print(f"Listening to nodes: {ALLOWED_NODES}")
     else:
         print(f"Gagal terhubung ke MQTT, code: {reason_code}")
 
@@ -129,12 +136,24 @@ def on_message(client, userdata, msg):
         # Extract node_id dari topik (format: base/topic/node_id)
         topic_parts = msg.topic.split("/")
         node_id_from_topic = topic_parts[-1] if len(topic_parts) > 0 else "unknown"
+
+        # Filter: Hanya terima data dari node yang diizinkan
+        if node_id_from_topic not in ALLOWED_NODES:
+            print(f"Node {node_id_from_topic} tidak diizinkan. Data diabaikan.")
+            return
+
         print(f"Topic parts: {topic_parts}, Node ID from topic: {node_id_from_topic}")
 
         payload = json.loads(msg.payload.decode("utf-8"))
 
         # Ambil data dari payload
         node_id = payload.get("node_id", node_id_from_topic)
+
+        # Double check: pastikan node_id di payload juga sesuai
+        if node_id not in ALLOWED_NODES:
+            print(f"Node ID dalam payload ({node_id}) tidak diizinkan. Data diabaikan.")
+            return
+
         temp = payload.get("temperature")
         hum = payload.get("humidity")
         pos_x = payload.get("pos_x")
@@ -479,7 +498,8 @@ if __name__ == "__main__":
 
     print("=== Multi-Node Temperature Monitoring Dashboard ===")
     print(f"Database: {DB_FILE}")
-    print(f"MQTT Topic: {MQTT_TOPIC}")
+    print(f"Allowed Nodes: {ALLOWED_NODES}")
+    print(f"MQTT Topics: {[f'{MQTT_TOPIC_BASE}/{node}' for node in ALLOWED_NODES]}")
     print(f"Field Size: {FIELD_WIDTH}x{FIELD_HEIGHT}m")
     print(f"Node Radius: {NODE_RADIUS}m")
     print("Dashboard akan berjalan di http://127.0.0.1:8050")

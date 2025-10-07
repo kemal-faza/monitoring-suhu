@@ -28,8 +28,9 @@ const float POS_Y = 25.0;         // Posisi Y dalam meter (0-100)
 // KONFIGURASI SISTEM (tidak perlu diubah)
 // ========================================
 const char *mqtt_server = "broker.hivemq.com";
+const int mqtt_port = 1883;
 const char *mqtt_base_topic = "Informatika/IoT-E/Kelompok9/multi_node";
-const unsigned long SEND_INTERVAL = 5000; // Kirim data setiap 5 detik
+const unsigned long SEND_INTERVAL = 200; // Kirim data setiap 100 ms
 
 // ========================================
 // INISIALISASI
@@ -65,7 +66,7 @@ void setup()
   connectWiFi();
 
   // Setup MQTT
-  client.setServer(mqtt_server, 1883);
+  client.setServer(mqtt_server, mqtt_port);
   connectMQTT();
 
   Serial.println("Setup selesai!");
@@ -92,8 +93,6 @@ void loop()
     sendSensorData();
     lastSend = millis();
   }
-
-  delay(100);
 }
 
 void connectWiFi()

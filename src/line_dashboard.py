@@ -13,7 +13,7 @@ import random
 
 # --- KONFIGURASI ---
 MQTT_BROKER = "broker.hivemq.com"
-MQTT_TOPIC = "Informatika/IoT-E/Kelompok9/multi_node"
+MQTT_TOPIC = "Informatika/IoT-E/Kelompok9/multi_node/+"
 DB_FILE = "climate_data.db"
 CLIENT_ID = f"dashboard_client_iot_project_{random.randint(0, 10000)}"
 

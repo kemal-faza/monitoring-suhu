@@ -13,7 +13,9 @@ import random
 
 # --- KONFIGURASI ---
 MQTT_BROKER = "broker.hivemq.com"
-MQTT_TOPIC = "Informatika/IoT-E/Kelompok9/multi_node/+"
+# Ganti topik wildcard dengan list node yang diizinkan
+ALLOWED_NODES = ["node_001", "node_002"]  # Hanya node ini yang diizinkan
+MQTT_TOPIC_BASE = "Informatika/IoT-E/Kelompok9/multi_node"
 DB_FILE = "climate_data.db"
 CLIENT_ID = f"dashboard_client_iot_project_{random.randint(0, 10000)}"
 
@@ -36,6 +38,7 @@ def setup_database():
         """
         CREATE TABLE IF NOT EXISTS climate (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            node_id TEXT NOT NULL,
             timestamp DATETIME NOT NULL,
             temperature REAL NOT NULL,
             humidity REAL NOT NULL
@@ -54,19 +57,26 @@ db_conn = setup_database()
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code == 0:
         print("MQTT Terhubung! Mengirim permintaan subscribe...")
-        # Lakukan subscribe setelah koneksi berhasil
-        client.subscribe(MQTT_TOPIC)
+
+        # Subscribe ke setiap node yang diizinkan
+        for node_id in ALLOWED_NODES:
+            topic = f"{MQTT_TOPIC_BASE}/{node_id}"
+            result = client.subscribe(topic)
+            print(f"Subscribe to {topic} - Result: {result}")
+
+        print(f"Listening to nodes: {ALLOWED_NODES}")
     else:
         print(f"Gagal terhubung ke MQTT, code: {reason_code}")
 
 
-# DIAGNOSTIK 1: Tambahkan callback on_subscribe
 def on_subscribe(client, userdata, mid, reason_codes, properties):
     # Cek apakah subscription berhasil (reason code < 128 berarti sukses)
-    if reason_codes[0] >= 128:
-        print(f"Gagal subscribe ke topik '{MQTT_TOPIC}'. Alasan: {reason_codes[0]}")
-    else:
-        print(f"Berhasil subscribe ke topik '{MQTT_TOPIC}'!")
+    success_count = sum(1 for rc in reason_codes if rc < 128)
+    failed_count = len(reason_codes) - success_count
+
+    print(f"Subscribe result - Success: {success_count}, Failed: {failed_count}")
+    if failed_count > 0:
+        print(f"Failed reason codes: {[rc for rc in reason_codes if rc >= 128]}")
 
 
 def on_message(client, userdata, msg):
@@ -74,22 +84,50 @@ def on_message(client, userdata, msg):
     print(f"--> Pesan mentah diterima di topik '{msg.topic}': {msg.payload.decode()}")
 
     try:
+        # Extract node_id dari topik (format: base/topic/node_id)
+        topic_parts = msg.topic.split("/")
+        node_id_from_topic = topic_parts[-1] if len(topic_parts) > 0 else "unknown"
+
+        # Filter: Hanya terima data dari node yang diizinkan
+        if node_id_from_topic not in ALLOWED_NODES:
+            print(f"Node {node_id_from_topic} tidak diizinkan. Data diabaikan.")
+            return
+
         payload = json.loads(msg.payload.decode("utf-8"))
+
+        # Ambil data dari payload
+        node_id = payload.get("node_id", node_id_from_topic)
+
+        # Double check: pastikan node_id di payload juga sesuai
+        if node_id not in ALLOWED_NODES:
+            print(f"Node ID dalam payload ({node_id}) tidak diizinkan. Data diabaikan.")
+            return
+
         temp = payload.get("temperature")
         hum = payload.get("humidity")
-        ts = float(payload.get("ts", datetime.now().timestamp()))
+
+        # Support both 'ts' and 'timestamp' field
+        ts_val = payload.get("timestamp")
+        if ts_val is None:
+            ts_val = payload.get("ts")
+        ts = float(ts_val) if ts_val is not None else datetime.now().timestamp()
+
         dt_object = datetime.fromtimestamp(ts)
+
+        print(f"Data diterima dari {node_id}: T={temp}°C, H={hum}%")
 
         if temp is not None and hum is not None:
             cursor = db_conn.cursor()
             cursor.execute(
-                "INSERT INTO climate (timestamp, temperature, humidity) VALUES (?, ?, ?)",
-                (dt_object.strftime("%Y-%m-%d %H:%M:%S"), temp, hum),
+                "INSERT INTO climate (node_id, timestamp, temperature, humidity) VALUES (?, ?, ?, ?)",
+                (node_id, dt_object.strftime("%Y-%m-%d %H:%M:%S"), temp, hum),
             )
             db_conn.commit()
 
             with data_lock:
-                live_data.append((dt_object, temp, hum))
+                live_data.append((dt_object, temp, hum, node_id))  # Tambah node_id
+        else:
+            print(f"Data tidak lengkap dari {node_id}: temp={temp}, hum={hum}")
 
     except Exception as e:
         print(f"Error memproses pesan: {e}")
@@ -169,109 +207,187 @@ def update_graphs(_):
                 empty_fig,
             )
 
-        timestamps, temperatures, humidities = zip(*live_data)
-        last_ts, last_temp, last_hum = timestamps[-1], temperatures[-1], humidities[-1]
+        # Get latest data for each node
+        latest_data_per_node = {}
+        for ts, temp, hum, node_id in live_data:
+            if (
+                node_id not in latest_data_per_node
+                or ts > latest_data_per_node[node_id]["timestamp"]
+            ):
+                latest_data_per_node[node_id] = {
+                    "timestamp": ts,
+                    "temperature": temp,
+                    "humidity": hum,
+                }
 
-    # --- Logika peringatan ---
+    # --- Logika peringatan untuk SEMUA node ---
     alerts = []
 
-    # Suhu
-    if last_temp < TEMP_LOW:
-        alerts.append(
-            html.Span(
-                f"Peringatan: Suhu RENDAH ({last_temp:.1f} °C)",
-                style={"color": "#33CFFF", "marginRight": "18px"},
+    for node_id in ALLOWED_NODES:
+        if node_id not in latest_data_per_node:
+            # Node tidak mengirim data
+            alerts.append(
+                html.Div(
+                    [
+                        html.Span(
+                            f"[{node_id}] ",
+                            style={
+                                "color": "#888",
+                                "fontWeight": "bold",
+                                "marginRight": "5px",
+                            },
+                        ),
+                        html.Span(
+                            "TIDAK ADA DATA",
+                            style={"color": "#ff6666", "marginRight": "15px"},
+                        ),
+                    ]
+                )
             )
-        )
-    elif last_temp >= TEMP_VERY_HIGH:
-        alerts.append(
-            html.Span(
-                f"BAHAYA: Suhu SANGAT TINGGI ({last_temp:.1f} °C)",
-                style={"color": "#ff3333", "marginRight": "18px"},
-            )
-        )
-    elif last_temp > TEMP_HIGH:
-        alerts.append(
-            html.Span(
-                f"Peringatan: Suhu TINGGI ({last_temp:.1f} °C)",
-                style={"color": "#FF8800", "marginRight": "18px"},
-            )
-        )
-    else:
-        alerts.append(
-            html.Span(
-                f"Suhu Normal ({last_temp:.1f} °C)",
-                style={"color": "#55dd55", "marginRight": "18px"},
-            )
-        )
+            continue
 
-    # Kelembaban
-    if last_hum < HUM_LOW:
-        alerts.append(
-            html.Span(
-                f"Kelembaban RENDAH ({last_hum:.1f} %)",
-                style={"color": "#ffa500", "marginRight": "18px"},
-            )
-        )
-    elif last_hum > HUM_HIGH:
-        alerts.append(
-            html.Span(
-                f"Kelembaban TINGGI ({last_hum:.1f} %)",
-                style={"color": "#ffcc00", "marginRight": "18px"},
-            )
-        )
-    else:
-        alerts.append(
-            html.Span(
-                f"Kelembaban Normal ({last_hum:.1f} %)",
-                style={"color": "#55ddaa", "marginRight": "18px"},
-            )
-        )
+        data = latest_data_per_node[node_id]
+        temp = data["temperature"]
+        hum = data["humidity"]
+        ts = data["timestamp"]
 
-    alert_container = html.Div(
-        children=alerts
-        + [
+        # Container untuk alert node ini
+        node_alerts = [
             html.Span(
-                f"Terakhir: {last_ts.strftime('%H:%M:%S')}",
-                style={"color": "#888", "marginLeft": "12px", "fontWeight": "normal"},
+                f"[{node_id}] ",
+                style={"color": "#888", "fontWeight": "bold", "marginRight": "5px"},
             )
         ]
+
+        # Suhu alerts
+        if temp < TEMP_LOW:
+            node_alerts.append(
+                html.Span(
+                    f"Suhu RENDAH ({temp:.1f}°C)",
+                    style={"color": "#33CFFF", "marginRight": "10px"},
+                )
+            )
+        elif temp >= TEMP_VERY_HIGH:
+            node_alerts.append(
+                html.Span(
+                    f"Suhu SANGAT TINGGI ({temp:.1f}°C)",
+                    style={"color": "#ff3333", "marginRight": "10px"},
+                )
+            )
+        elif temp > TEMP_HIGH:
+            node_alerts.append(
+                html.Span(
+                    f"Suhu TINGGI ({temp:.1f}°C)",
+                    style={"color": "#FF8800", "marginRight": "10px"},
+                )
+            )
+        else:
+            node_alerts.append(
+                html.Span(
+                    f"Suhu Normal ({temp:.1f}°C)",
+                    style={"color": "#55dd55", "marginRight": "10px"},
+                )
+            )
+
+        # Kelembaban alerts
+        if hum < HUM_LOW:
+            node_alerts.append(
+                html.Span(
+                    f"Kelembaban RENDAH ({hum:.1f}%)",
+                    style={"color": "#ffa500", "marginRight": "10px"},
+                )
+            )
+        elif hum > HUM_HIGH:
+            node_alerts.append(
+                html.Span(
+                    f"Kelembaban TINGGI ({hum:.1f}%)",
+                    style={"color": "#ffcc00", "marginRight": "10px"},
+                )
+            )
+        else:
+            node_alerts.append(
+                html.Span(
+                    f"Kelembaban Normal ({hum:.1f}%)",
+                    style={"color": "#55ddaa", "marginRight": "10px"},
+                )
+            )
+
+        # Timestamp
+        node_alerts.append(
+            html.Span(
+                f"({ts.strftime('%H:%M:%S')})",
+                style={"color": "#999", "fontSize": "0.9em"},
+            )
+        )
+
+        # Tambahkan alert untuk node ini
+        alerts.append(html.Div(children=node_alerts, style={"marginBottom": "8px"}))
+
+    # Container untuk semua alerts
+    alert_container = html.Div(children=alerts)
+
+    # --- Grafik dengan color coding per node ---
+    fig_suhu = go.Figure()
+    fig_kelembaban = go.Figure()
+
+    # Warna berbeda untuk setiap node
+    node_colors = {
+        "node_001": "#FF5733",
+        "node_002": "#33FF57",
+        "node_003": "#3357FF",
+        "node_004": "#FF33F5",
+    }
+
+    for node_id in ALLOWED_NODES:
+        # Filter data for this node
+        node_timestamps = [ts for ts, _, _, nid in live_data if nid == node_id]
+        node_temps = [temp for _, temp, _, nid in live_data if nid == node_id]
+        node_hums = [hum for _, _, hum, nid in live_data if nid == node_id]
+
+        if node_timestamps:  # Only add if there's data
+            color = node_colors.get(node_id, "#FFFFFF")
+
+            fig_suhu.add_trace(
+                go.Scatter(
+                    x=node_timestamps,
+                    y=node_temps,
+                    mode="lines+markers",
+                    name=f"{node_id}",
+                    line=dict(color=color, width=2),
+                    marker=dict(size=6),
+                )
+            )
+
+            fig_kelembaban.add_trace(
+                go.Scatter(
+                    x=node_timestamps,
+                    y=node_hums,
+                    mode="lines+markers",
+                    name=f"{node_id}",
+                    line=dict(color=color, width=2),
+                    marker=dict(size=6),
+                )
+            )
+
+    # Update layout untuk grafik suhu
+    fig_suhu.update_layout(
+        title="Grafik Suhu Real-time (Multi-Node)",
+        yaxis_title="Suhu (°C)",
+        template="plotly_dark",
+        margin=dict(l=40, r=40, t=40, b=40),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        showlegend=True,
     )
 
-    # --- Grafik (tidak berubah) ---
-    fig_suhu = go.Figure(
-        data=[
-            go.Scatter(
-                x=list(timestamps),
-                y=list(temperatures),
-                mode="lines+markers",
-                line=dict(color="#FF5733"),
-            )
-        ],
-        layout=go.Layout(
-            title="Grafik Suhu Real-time",
-            yaxis_title="Suhu (°C)",
-            template="plotly_dark",
-            margin=dict(l=40, r=40, t=40, b=40),
-        ),
-    )
-
-    fig_kelembaban = go.Figure(
-        data=[
-            go.Scatter(
-                x=list(timestamps),
-                y=list(humidities),
-                mode="lines+markers",
-                line=dict(color="#33CFFF"),
-            )
-        ],
-        layout=go.Layout(
-            title="Grafik Kelembaban Real-time",
-            xaxis_title="Waktu",
-            yaxis_title="Kelembaban (%)",
-            template="plotly_dark",
-            margin=dict(l=40, r=40, t=40, b=40),
-        ),
+    # Update layout untuk grafik kelembaban
+    fig_kelembaban.update_layout(
+        title="Grafik Kelembaban Real-time (Multi-Node)",
+        xaxis_title="Waktu",
+        yaxis_title="Kelembaban (%)",
+        template="plotly_dark",
+        margin=dict(l=40, r=40, t=40, b=40),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        showlegend=True,
     )
 
     return alert_container, fig_suhu, fig_kelembaban
@@ -282,7 +398,6 @@ if __name__ == "__main__":
     mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, CLIENT_ID)
     mqtt_client.on_connect = on_connect
     mqtt_client.on_message = on_message
-    # DIAGNOSTIK 1 (lanjutan): Daftarkan callback on_subscribe
     mqtt_client.on_subscribe = on_subscribe
 
     try:
@@ -292,5 +407,10 @@ if __name__ == "__main__":
         sys.exit(1)
 
     mqtt_client.loop_start()
+
+    print("=== Line Dashboard Multi-Node ===")
+    print(f"Allowed Nodes: {ALLOWED_NODES}")
+    print(f"MQTT Topics: {[f'{MQTT_TOPIC_BASE}/{node}' for node in ALLOWED_NODES]}")
+    print("Dashboard akan berjalan di http://127.0.0.1:8050")
 
     app.run(debug=True, use_reloader=False)
